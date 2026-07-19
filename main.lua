@@ -2841,6 +2841,7 @@ if IKAI then
 
             function main:Textbox(text, placeholder, callback, iconName)
                 local iconAsset = GetIcon(iconName)
+                local connections = {} -- Store connections for cleanup
 
                 local TBFrame = Instance.new("Frame")
                 TBFrame.Name = "Textbox"
@@ -2905,15 +2906,26 @@ if IKAI then
                 Input.TextXAlignment = Enum.TextXAlignment.Left
                 Input.ZIndex = 5
 
-                Input.Focused:Connect(function()
+                -- Store focus connections
+                table.insert(connections, Input.Focused:Connect(function()
                     TweenService:Create(ICS, TweenInfo.new(0.15), {Color = _G.Accent}):Play()
                     TweenService:Create(TBS, TweenInfo.new(0.15), {Color = _G.Accent}):Play()
-                end)
-                Input.FocusLost:Connect(function()
+                end))
+                
+                table.insert(connections, Input.FocusLost:Connect(function()
                     TweenService:Create(ICS, TweenInfo.new(0.15), {Color = _G.Border}):Play()
                     TweenService:Create(TBS, TweenInfo.new(0.15), {Color = _G.Border}):Play()
                     pcall(callback, Input.Text)
+                end))
+
+                -- Track ancestry for cleanup
+                local ancestryConn
+                ancestryConn = TBFrame.AncestryChanged:Connect(function()
+                    if not TBFrame.Parent then
+                        if ancestryConn then ancestryConn:Disconnect() end
+                    end
                 end)
+                table.insert(connections, ancestryConn)
 
                 local TBObj = {}
                 table.insert(allElements, function()
@@ -2924,13 +2936,65 @@ if IKAI then
                     Input.PlaceholderColor3 = _G.TextSecondary
                     ICS.Color = _G.Border
                 end)
-                function TBObj:Set(v) Input.Text = tostring(v or "") end
-                function TBObj:SetValue(v) Input.Text = tostring(v or "") end
-                function TBObj:SetText(t) if t then TBLabel.Text = t end return TBObj end
-                function TBObj:SetVisible(visible) TBFrame.Visible = visible return TBObj end
-                function TBObj:Get() return Input.Text end
-                function TBObj:Clear() Input.Text = "" end
-                function TBObj:Focus() Input:CaptureFocus() end
+                
+                function TBObj:Set(v) 
+                    Input.Text = tostring(v or "") 
+                end
+                function TBObj:SetValue(v) 
+                    Input.Text = tostring(v or "") 
+                end
+                function TBObj:SetText(t) 
+                    if t then TBLabel.Text = t end 
+                    return TBObj 
+                end
+                function TBObj:SetVisible(visible) 
+                    TBFrame.Visible = visible 
+                    return TBObj 
+                end
+                function TBObj:Get() 
+                    return Input.Text 
+                end
+                function TBObj:Clear() 
+                    Input.Text = "" 
+                end
+                function TBObj:Focus() 
+                    Input:CaptureFocus() 
+                end
+                
+                -- NEW DESTROY FUNCTION
+                function TBObj:Destroy()
+                    -- Disconnect all connections
+                    for _, conn in ipairs(connections) do
+                        if conn and conn.Disconnect then
+                            conn:Disconnect()
+                        end
+                    end
+                    connections = {}
+                    
+                    -- Destroy the main frame and all children
+                    if TBFrame and TBFrame.Parent then
+                        TBFrame:Destroy()
+                    end
+                    
+                    -- Remove from allElements tracking if needed
+                    local idx = table.find(allElements, TBObj)
+                    if idx then
+                        table.remove(allElements, idx)
+                    end
+                    
+                    -- Nullify references to prevent memory leaks
+                    TBFrame = nil
+                    TBLabel = nil
+                    InputCont = nil
+                    Input = nil
+                    TBC3 = nil
+                    TBS = nil
+                    ICC = nil
+                    ICS = nil
+                    
+                    return true
+                end
+                
                 TBObj.Frame = TBFrame
                 return TBObj
             end
@@ -2951,6 +3015,7 @@ if IKAI then
                 local isDropped = false
                 local itemMap = {}
                 local allOptions = table.clone(options)
+                local connections = {} -- Store connections for cleanup
 
                 local DDFrame = Instance.new("Frame")
                 DDFrame.Name = "Dropdown"
@@ -3034,8 +3099,14 @@ if IKAI then
                 SearchBox.ClearTextOnFocus = false
                 SearchBox.ZIndex = 5
                 SearchBox.Parent = SearchCont
-                SearchBox.Focused:Connect(function() TweenService:Create(SCS, TweenInfo.new(0.15), {Color = _G.Accent}):Play() end)
-                SearchBox.FocusLost:Connect(function() TweenService:Create(SCS, TweenInfo.new(0.15), {Color = _G.Border}):Play() end)
+                
+                -- Store search box connections
+                table.insert(connections, SearchBox.Focused:Connect(function() 
+                    TweenService:Create(SCS, TweenInfo.new(0.15), {Color = _G.Accent}):Play() 
+                end))
+                table.insert(connections, SearchBox.FocusLost:Connect(function() 
+                    TweenService:Create(SCS, TweenInfo.new(0.15), {Color = _G.Border}):Play() 
+                end))
 
                 local OptionsCont = Instance.new("Frame")
                 OptionsCont.BackgroundTransparency = 1
@@ -3082,6 +3153,7 @@ if IKAI then
                 end
 
                 local createOption, refreshOptions
+                local optionConnections = {} -- Store option-specific connections
 
                 createOption = function(value)
                     local opt = Instance.new("TextButton")
@@ -3110,14 +3182,19 @@ if IKAI then
                         ck.ZIndex = 6; ck.Parent = opt
                     end
 
-                    opt.MouseEnter:Connect(function()
-                        if not isSelected(value) then TweenService:Create(opt, TweenInfo.new(0.12), {BackgroundTransparency = 0.7, TextColor3 = _G.Accent}):Play() end
-                    end)
-                    opt.MouseLeave:Connect(function()
-                        if not isSelected(value) then TweenService:Create(opt, TweenInfo.new(0.12), {BackgroundTransparency = 1, TextColor3 = _G.TextPrimary}):Play() end
-                    end)
-
-                    opt.MouseButton1Click:Connect(function()
+                    -- Store option connections
+                    local optConns = {}
+                    table.insert(optConns, opt.MouseEnter:Connect(function()
+                        if not isSelected(value) then 
+                            TweenService:Create(opt, TweenInfo.new(0.12), {BackgroundTransparency = 0.7, TextColor3 = _G.Accent}):Play() 
+                        end
+                    end))
+                    table.insert(optConns, opt.MouseLeave:Connect(function()
+                        if not isSelected(value) then 
+                            TweenService:Create(opt, TweenInfo.new(0.12), {BackgroundTransparency = 1, TextColor3 = _G.TextPrimary}):Play() 
+                        end
+                    end))
+                    table.insert(optConns, opt.MouseButton1Click:Connect(function()
                         if isMulti then
                             local idx = table.find(selections, value)
                             if idx then table.remove(selections, idx) else table.insert(selections, value) end
@@ -3131,16 +3208,27 @@ if IKAI then
                         end
                         refreshOptions(SearchBox.Text)
                         updateTitle()
-                    end)
+                    end))
 
-                    itemMap[value] = {Button = opt, Value = value}
+                    itemMap[value] = {Button = opt, Value = value, Connections = optConns}
                 end
 
                 local function clearOptions()
-                    for _, c in ipairs(DropScroll:GetChildren()) do
-                        if c.Name:find("Option_") or c.Name:find("Sep_") then c:Destroy() end
+                    -- Disconnect all option connections
+                    for _, item in pairs(itemMap) do
+                        if item.Connections then
+                            for _, conn in ipairs(item.Connections) do
+                                conn:Disconnect()
+                            end
+                        end
                     end
                     itemMap = {}
+                    
+                    for _, c in ipairs(DropScroll:GetChildren()) do
+                        if c.Name:find("Option_") or c.Name:find("Sep_") then 
+                            c:Destroy() 
+                        end
+                    end
                 end
 
                 refreshOptions = function(filter)
@@ -3191,9 +3279,11 @@ if IKAI then
                     end
                 end
 
-                SearchBox.Changed:Connect(function(p) if p == "Text" then refreshOptions(SearchBox.Text) end end)
+                table.insert(connections, SearchBox.Changed:Connect(function(p) 
+                    if p == "Text" then refreshOptions(SearchBox.Text) end 
+                end))
 
-                DropBtn.MouseButton1Click:Connect(function()
+                table.insert(connections, DropBtn.MouseButton1Click:Connect(function()
                     isDropped = not isDropped
                     if isDropped then
                         SearchCont.Visible = true; OptionsCont.Visible = true
@@ -3205,7 +3295,7 @@ if IKAI then
                         TweenService:Create(ChevronImg, TweenInfo.new(0.2), {Rotation = 0}):Play()
                         SearchCont.Visible = false; OptionsCont.Visible = false
                     end
-                end)
+                end))
 
                 local ibc = UserInputService.InputBegan:Connect(function(input, gp)
                     if gp or input.UserInputType ~= Enum.UserInputType.MouseButton1 or not isDropped then return end
@@ -3218,7 +3308,17 @@ if IKAI then
                         SearchCont.Visible = false; OptionsCont.Visible = false
                     end
                 end)
-                DDFrame.AncestryChanged:Connect(function() if not DDFrame.Parent and ibc then ibc:Disconnect() end end)
+                
+                table.insert(connections, ibc)
+                
+                local ancestryConn
+                ancestryConn = DDFrame.AncestryChanged:Connect(function() 
+                    if not DDFrame.Parent then 
+                        if ibc then ibc:Disconnect() end
+                        if ancestryConn then ancestryConn:Disconnect() end
+                    end 
+                end)
+                table.insert(connections, ancestryConn)
 
                 updateTitle(); refreshOptions("")
 
@@ -3233,6 +3333,7 @@ if IKAI then
                     SCS.Color = _G.Border
                     DropScroll.ScrollBarImageColor3 = _G.Border
                 end)
+                
                 function api:Get() return isMulti and table.clone(selections) or selections end
                 function api:Set(val)
                     selections = isMulti and (typeof(val)=="table" and table.clone(val) or {val}) or val
@@ -3258,14 +3359,81 @@ if IKAI then
                     DDFrame.Visible = visible
                     return api
                 end
-                function api:Add(val) if not table.find(allOptions,val) then table.insert(allOptions,val) end; if isDropped then refreshOptions(SearchBox.Text) end end
-                function api:Remove(val)
-                    local idx = table.find(allOptions,val); if idx then table.remove(allOptions,idx) end
-                    if isMulti then local si = table.find(selections,val); if si then table.remove(selections,si) end elseif selections==val then selections=nil end
-                    updateTitle(); if isDropped then refreshOptions(SearchBox.Text) end; callback(api:Get())
+                function api:Add(val) 
+                    if not table.find(allOptions,val) then 
+                        table.insert(allOptions,val) 
+                    end
+                    if isDropped then refreshOptions(SearchBox.Text) end 
                 end
-                function api:Clear() selections = isMulti and {} or nil; allOptions = {}; clearOptions(); updateTitle(); callback(api:Get()) end
+                function api:Remove(val)
+                    local idx = table.find(allOptions,val); 
+                    if idx then table.remove(allOptions,idx) end
+                    if isMulti then 
+                        local si = table.find(selections,val); 
+                        if si then table.remove(selections,si) end 
+                    elseif selections==val then selections=nil end
+                    updateTitle(); 
+                    if isDropped then refreshOptions(SearchBox.Text) end; 
+                    callback(api:Get())
+                end
+                function api:Clear() 
+                    selections = isMulti and {} or nil; 
+                    allOptions = {}; 
+                    clearOptions(); 
+                    updateTitle(); 
+                    callback(api:Get()) 
+                end
                 function api:GetOptions() return table.clone(allOptions) end
+                
+                -- NEW DESTROY FUNCTION
+                function api:Destroy()
+                    -- Disconnect all connections
+                    for _, conn in ipairs(connections) do
+                        if conn and conn.Disconnect then
+                            conn:Disconnect()
+                        end
+                    end
+                    connections = {}
+                    
+                    -- Clear all option connections
+                    clearOptions()
+                    
+                    -- Destroy the main frame and all children
+                    if DDFrame and DDFrame.Parent then
+                        DDFrame:Destroy()
+                    end
+                    
+                    -- Clear references
+                    itemMap = {}
+                    allOptions = {}
+                    selections = nil
+                    
+                    -- Remove from allElements tracking if needed
+                    local idx = table.find(allElements, api)
+                    if idx then
+                        table.remove(allElements, idx)
+                    end
+                    
+                    -- Nullify all references to prevent memory leaks
+                    DDFrame = nil
+                    DDHeader = nil
+                    DDTitle = nil
+                    ChevronImg = nil
+                    DropBtn = nil
+                    SearchCont = nil
+                    SearchBox = nil
+                    OptionsCont = nil
+                    DropScroll = nil
+                    DSLL = nil
+                    DSPad = nil
+                    DDC = nil
+                    DDS = nil
+                    SCC = nil
+                    SCS = nil
+                    
+                    return true
+                end
+                
                 api.Frame = DDFrame
                 return api
             end
