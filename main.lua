@@ -2578,11 +2578,11 @@ if IKAI then
                 BtnObj.Frame = Btn
                 return BtnObj
             end
-
             function main:Toggle(text, config, callback, iconName)
                 config = config or false
                 local toggled = config
                 local iconAsset = GetIcon(iconName)
+                local connections = {} -- Store connections for cleanup
 
                 local TogFrame = Instance.new("Frame")
                 TogFrame.Name = "Toggle"
@@ -2661,14 +2661,30 @@ if IKAI then
                     pcall(callback, toggled)
                 end
 
-                TogSwitch.MouseButton1Click:Connect(function() updateState(not toggled) end)
+                -- Store button connections
+                table.insert(connections, TogSwitch.MouseButton1Click:Connect(function() 
+                    updateState(not toggled) 
+                end))
+                
                 local ClickOverlay = Instance.new("TextButton")
                 ClickOverlay.BackgroundTransparency = 1
                 ClickOverlay.Size = UDim2.new(1, -60, 1, 0)
                 ClickOverlay.Text = ""
                 ClickOverlay.ZIndex = 4
                 ClickOverlay.Parent = TogFrame
-                ClickOverlay.MouseButton1Click:Connect(function() updateState(not toggled) end)
+                
+                table.insert(connections, ClickOverlay.MouseButton1Click:Connect(function() 
+                    updateState(not toggled) 
+                end))
+
+                -- Track ancestry for cleanup
+                local ancestryConn
+                ancestryConn = TogFrame.AncestryChanged:Connect(function()
+                    if not TogFrame.Parent then
+                        if ancestryConn then ancestryConn:Disconnect() end
+                    end
+                end)
+                table.insert(connections, ancestryConn)
 
                 if config == true then updateState(true) end
 
@@ -2680,6 +2696,7 @@ if IKAI then
                     TogSwitch.BackgroundColor3 = toggled and _G.Accent or _G.Border
                     if TogIcon then TogIcon.ImageColor3 = toggled and _G.Accent or _G.TextSecondary end
                 end)
+                
                 function TogObj:Set(state, newText)
                     if state ~= nil then updateState(state) end
                     if newText then TogLabel.Text = newText end
@@ -2696,7 +2713,46 @@ if IKAI then
                     TogFrame.Visible = visible
                     return TogObj
                 end
-                function TogObj:Get() return toggled end
+                function TogObj:Get() 
+                    return toggled 
+                end
+                
+                -- NEW DESTROY FUNCTION
+                function TogObj:Destroy()
+                    -- Disconnect all connections
+                    for _, conn in ipairs(connections) do
+                        if conn and conn.Disconnect then
+                            conn:Disconnect()
+                        end
+                    end
+                    connections = {}
+                    
+                    -- Destroy the main frame and all children
+                    if TogFrame and TogFrame.Parent then
+                        TogFrame:Destroy()
+                    end
+                    
+                    -- Remove from allElements tracking if needed
+                    local idx = table.find(allElements, TogObj)
+                    if idx then
+                        table.remove(allElements, idx)
+                    end
+                    
+                    -- Nullify references to prevent memory leaks
+                    TogFrame = nil
+                    TogLabel = nil
+                    TogSwitch = nil
+                    Knob = nil
+                    TogIcon = nil
+                    TC = nil
+                    TS = nil
+                    TSC = nil
+                    KC = nil
+                    ClickOverlay = nil
+                    
+                    return true
+                end
+                
                 TogObj.Frame = TogFrame
                 return TogObj
             end
