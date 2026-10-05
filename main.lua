@@ -459,9 +459,7 @@ end
 
 function ThemeManager:_NotifyListeners()
     for _, callback in ipairs(self.ThemeListeners) do
-        task.defer(function()
-            pcall(callback, self.Themes[self.CurrentTheme])
-        end)
+        pcall(callback, self.Themes[self.CurrentTheme])
     end
 end
 
@@ -1409,6 +1407,9 @@ local function GetIcon(iconName)
     return nil
 end
 
+
+
+
 local function randomString(length)
     local chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
     local str = ""
@@ -1442,6 +1443,11 @@ local function SafeDestroyUI()
 end
 
 SafeDestroyUI()
+if not game:IsLoaded() then game.Loaded:Wait() end
+task.wait(1)
+
+
+
 
 local function GetScreenInfo()
     local viewportSize = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(1920, 1080)
@@ -1953,7 +1959,7 @@ if IKAI then
                 end
             end
             for _, updater in ipairs(allElements) do
-                SafeCallback(updater)
+                pcall(updater)
             end
         end
 
@@ -2109,7 +2115,7 @@ if IKAI then
                         AB.Size = UDim2.new(0, ts.X + 18, 0, 26)
                         local ABc = Instance.new("UICorner"); ABc.CornerRadius = UDim.new(0,5); ABc.Parent = AB
                         local ABS = Instance.new("UIStroke"); ABS.Color = _G.Border; ABS.Thickness = 1; ABS.Parent = AB
-                        AB.MouseButton1Click:Connect(function() SafeCallback(action.Callback) end)
+                        AB.MouseButton1Click:Connect(function() pcall(action.Callback) end)
                         table.insert(actionButtons, AB)
                     end
                 end
@@ -2543,7 +2549,7 @@ if IKAI then
                     TweenService:Create(BS, TweenInfo.new(0.2), {Color = _G.Border}):Play()
                     TweenService:Create(BtnText, TweenInfo.new(0.2), {TextColor3 = _G.TextPrimary}):Play()
                 end)
-                Btn.MouseButton1Click:Connect(function() SafeCallback(callback) end)
+                Btn.MouseButton1Click:Connect(function() pcall(callback) end)
 
                 local BtnObj = {}
                 table.insert(allElements, function()
@@ -2652,7 +2658,7 @@ if IKAI then
                         TweenService:Create(TS, TweenInfo.new(0.2), {Color = _G.Border}):Play()
                         if TogIcon then TweenService:Create(TogIcon, TweenInfo.new(0.2), {ImageColor3 = _G.TextSecondary}):Play() end
                     end
-                    SafeCallback(callback, toggled)
+                    pcall(callback, toggled)
                 end
 
                 -- Store button connections
@@ -2846,7 +2852,7 @@ if IKAI then
                     local pct = (val - min) / (max - min)
                     Fill.Size = UDim2.new(pct, 0, 1, 0)
                     Knob2.Position = UDim2.new(pct, 0, 0.5, 0)
-                    SafeCallback(callback, val)
+                    pcall(callback, val)
                 end
 
                 UpdateSlider(set)
@@ -2965,7 +2971,7 @@ if IKAI then
                 table.insert(connections, Input.FocusLost:Connect(function()
                     TweenService:Create(ICS, TweenInfo.new(0.15), {Color = _G.Border}):Play()
                     TweenService:Create(TBS, TweenInfo.new(0.15), {Color = _G.Border}):Play()
-                    SafeCallback(callback, Input.Text)
+                    pcall(callback, Input.Text)
                 end))
 
                 -- Track ancestry for cleanup
@@ -3248,9 +3254,9 @@ if IKAI then
                         if isMulti then
                             local idx = table.find(selections, value)
                             if idx then table.remove(selections, idx) else table.insert(selections, value) end
-                            SafeCallback(callback, table.clone(selections))
+                            callback(table.clone(selections))
                         else
-                            selections = value; SafeCallback(callback, selections)
+                            selections = value; callback(selections)
                             isDropped = false
                             DDFrame:TweenSize(UDim2.new(0,elementWidth,0,isMobileLayout and 34 or 38), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.2, true)
                             TweenService:Create(ChevronImg, TweenInfo.new(0.2), {Rotation = 0}):Play()
@@ -3387,7 +3393,7 @@ if IKAI then
                 function api:Get() return isMulti and table.clone(selections) or selections end
                 function api:Set(val)
                     selections = isMulti and (typeof(val)=="table" and table.clone(val) or {val}) or val
-                    updateTitle(); refreshOptions(""); SafeCallback(callback, api:Get())
+                    updateTitle(); refreshOptions(""); callback(api:Get())
                 end
                 function api:SetValue(val)
                     return api:Set(val)
@@ -3424,14 +3430,14 @@ if IKAI then
                     elseif selections==val then selections=nil end
                     updateTitle(); 
                     if isDropped then refreshOptions(SearchBox.Text) end; 
-                    SafeCallback(callback, api:Get())
+                    callback(api:Get())
                 end
                 function api:Clear() 
                     selections = isMulti and {} or nil; 
                     allOptions = {}; 
                     clearOptions(); 
                     updateTitle(); 
-                    SafeCallback(callback, api:Get()) 
+                    callback(api:Get()) 
                 end
                 function api:GetOptions() return table.clone(allOptions) end
                 
@@ -3647,7 +3653,7 @@ if IKAI then
                             debounce = true
                             
                             -- Call the callback
-                            SafeCallback(callback, currentKey)
+                            pcall(callback, currentKey)
                             
                             -- Visual feedback
                             TweenService:Create(KeyPillCont, TweenInfo.new(0.1), {
@@ -3712,7 +3718,7 @@ if IKAI then
                                 currentKey = input.KeyCode
                                 isCleared = false
                                 StopListening()
-                                SafeCallback(callback, currentKey)
+                                pcall(callback, currentKey)
                                 SetupGlobalListener() -- Re-setup global listener with new key
                             end
                         end
@@ -3722,7 +3728,7 @@ if IKAI then
                             currentKey = Enum.KeyCode[input.UserInputType.Name]
                             isCleared = false
                             StopListening()
-                            SafeCallback(callback, currentKey)
+                            pcall(callback, currentKey)
                             SetupGlobalListener()
                         end
                     end)
@@ -3769,7 +3775,7 @@ if IKAI then
                     isCleared = true
                     StopListening()
                     UpdateDisplay()
-                    SafeCallback(callback, nil)
+                    pcall(callback, nil)
                     -- Remove global listener when cleared
                     if globalConn then 
                         globalConn:Disconnect()
@@ -4083,7 +4089,7 @@ if IKAI then
                     RGBInputs["R"].Text = tostring(r)
                     RGBInputs["G"].Text = tostring(g)
                     RGBInputs["B"].Text = tostring(b)
-                    SafeCallback(callback, currentColor)
+                    pcall(callback, currentColor)
                 end
                 
                 local function UpdateColorFromHSV(h,s,v)
@@ -4095,7 +4101,7 @@ if IKAI then
                     RGBInputs["R"].Text = tostring(math.floor(r))
                     RGBInputs["G"].Text = tostring(math.floor(g))
                     RGBInputs["B"].Text = tostring(math.floor(b))
-                    SafeCallback(callback, currentColor)
+                    pcall(callback, currentColor)
                 end
                 
                 
@@ -4122,7 +4128,7 @@ if IKAI then
                     Swatch.BackgroundColor3 = currentColor
 
                     
-                    SafeCallback(callback, currentColor)
+                    pcall(callback, currentColor)
                 end
                 
                 HexInput.FocusLost:Connect(function(enterPressed)
@@ -4285,7 +4291,7 @@ if IKAI then
                         RGBInputs["G"].Text = tostring(math.floor(g))
                         RGBInputs["B"].Text = tostring(math.floor(b))
                     end
-                    SafeCallback(callback, color)
+                    pcall(callback, color)
                 end
                 function CPObj:SetText(t) CPLabel.Text = t end
                 function CPObj:SetVisible(visible)
@@ -4454,6 +4460,7 @@ if IKAI then
                 ParagraphText.LineHeight = lineHeight
                 ParagraphText.ZIndex = 5
                 ParagraphText.Parent = TextContainer
+                ParagraphText.AutomaticSize = Enum.AutomaticSize.Y
 
                 -- Update function with multiple delay attempts
                 local updateTimer = nil
@@ -4503,190 +4510,144 @@ if IKAI then
 
                 -- API with immediate updates
                 local ParagraphAPI = {}
-
-                local function mutate(fn)
-                    task.defer(function()
-                        local ok, err = pcall(fn)
-                        if not ok then warn("[Paragraph] mutate error:", err) end
-                    end)
-                end
-
+                
                 local function forceUpdate()
-                    mutate(function() updateSize(true) end)
+                    updateSize(true)
                 end
-
+                
                 function ParagraphAPI:Set(newText)
-                    mutate(function()
-                        ParagraphText.Text = tostring(newText or "")
-                        updateSize(true)
-                    end)
+                    ParagraphText.Text = tostring(newText or "")
+                    forceUpdate()
                     return ParagraphAPI
                 end
-
+                
                 function ParagraphAPI:Get()
                     return ParagraphText.Text
                 end
-
-                function ParagraphAPI:SetColor(c)
-                    mutate(function()
-                        ParagraphText.TextColor3 = c
-                    end)
+                
+                function ParagraphAPI:SetColor(color)
+                    ParagraphText.TextColor3 = color
                     return ParagraphAPI
                 end
-
-                function ParagraphAPI:SetTextSize(s)
-                    mutate(function()
-                        ParagraphText.TextSize = s
-                        updateSize(true)
-                    end)
+                
+                function ParagraphAPI:SetTextSize(size)
+                    ParagraphText.TextSize = size
                     return ParagraphAPI
                 end
-
+                
                 function ParagraphAPI:SetLineHeight(height)
-                    mutate(function()
-                        ParagraphText.LineHeight = height
-                        updateSize(true)
-                    end)
+                    ParagraphText.LineHeight = height
+                    forceUpdate()
                     return ParagraphAPI
                 end
-
+                
                 function ParagraphAPI:SetRichText(enabled)
-                    mutate(function()
-                        ParagraphText.RichText = enabled
-                        updateSize(true)
-                    end)
+                    ParagraphText.RichText = enabled
+                    forceUpdate()
                     return ParagraphAPI
                 end
-
+                
                 function ParagraphAPI:AddText(newText)
-                    mutate(function()
-                        ParagraphText.Text = ParagraphText.Text .. tostring(newText)
-                        updateSize(true)
-                    end)
+                    ParagraphText.Text = ParagraphText.Text .. tostring(newText)
+                    forceUpdate()
                     return ParagraphAPI
                 end
-
+                
                 function ParagraphAPI:Clear()
-                    mutate(function()
-                        ParagraphText.Text = ""
-                        updateSize(true)
-                    end)
+                    ParagraphText.Text = ""
+                    forceUpdate()
                     return ParagraphAPI
                 end
-
-                function ParagraphAPI:SetBackgroundColor(c)
-                    mutate(function()
-                        Paragraph.BackgroundColor3 = c
-                    end)
+                
+                function ParagraphAPI:SetBackgroundColor(color)
+                    Paragraph.BackgroundColor3 = color
                     return ParagraphAPI
                 end
-
-                function ParagraphAPI:SetBackgroundTransparency(t)
-                    mutate(function()
-                        Paragraph.BackgroundTransparency = t
-                    end)
+                
+                function ParagraphAPI:SetBackgroundTransparency(transparency)
+                    Paragraph.BackgroundTransparency = transparency
                     return ParagraphAPI
                 end
-
+                
                 function ParagraphAPI:SetMaxHeight(height)
                     maxHeight = height
-                    mutate(function() updateSize(true) end)
+                    forceUpdate()
                     return ParagraphAPI
                 end
-
+                
+                -- Gradient control
                 function ParagraphAPI:SetGradient(colorInput, rotation)
-                    mutate(function()
-                        local existing = Paragraph:FindFirstChildOfClass("UIGradient")
-                        if not existing then
-                            existing = Instance.new("UIGradient")
-                            existing.Parent = Paragraph
+                    local existing = Paragraph:FindFirstChildOfClass("UIGradient")
+                    if not existing then
+                        existing = Instance.new("UIGradient")
+                        existing.Parent = Paragraph
+                    end
+                    
+                    if typeof(colorInput) == "ColorSequence" then
+                        existing.Color = colorInput
+                    elseif typeof(colorInput) == "table" then
+                        local keypoints = {}
+                        for i, col in ipairs(colorInput) do
+                            local alpha = (#colorInput > 1) and ((i - 1) / (#colorInput - 1)) or 0
+                            table.insert(keypoints, ColorSequenceKeypoint.new(alpha, col))
                         end
-
-                        if typeof(colorInput) == "ColorSequence" then
-                            existing.Color = colorInput
-                        elseif typeof(colorInput) == "table" then
-                            local keypoints = {}
-                            for i, col in ipairs(colorInput) do
-                                local alpha = (#colorInput > 1) and ((i - 1) / (#colorInput - 1)) or 0
-                                table.insert(keypoints, ColorSequenceKeypoint.new(alpha, col))
-                            end
-                            existing.Color = ColorSequence.new(keypoints)
-                        end
-
-                        existing.Rotation = rotation or existing.Rotation
-                        Paragraph.BackgroundTransparency = 0
-                    end)
+                        existing.Color = ColorSequence.new(keypoints)
+                    end
+                    
+                    existing.Rotation = rotation or existing.Rotation
+                    Paragraph.BackgroundTransparency = 0
                     return ParagraphAPI
                 end
-
+                
+                -- Formatting helpers
                 function ParagraphAPI:AddHeader(text, level)
                     level = level or 1
                     local headerSize = (isMobileLayout and 14 or 16) - (level - 1) * 2
-                    mutate(function()
-                        ParagraphText.Text = ParagraphText.Text ..
-                            string.format("\n<font size=\"%d\"><b>%s</b></font>\n", headerSize, text)
-                        updateSize(true)
-                    end)
+                    local headerText = string.format("\n<font size=\"%d\"><b>%s</b></font>\n", headerSize, text)
+                    ParagraphText.Text = ParagraphText.Text .. headerText
+                    forceUpdate()
                     return ParagraphAPI
                 end
-
+                
                 function ParagraphAPI:AddListItem(text)
-                    mutate(function()
-                        ParagraphText.Text = ParagraphText.Text .. "\n• " .. text
-                        updateSize(true)
-                    end)
+                    ParagraphText.Text = ParagraphText.Text .. "\n• " .. text
+                    forceUpdate()
                     return ParagraphAPI
                 end
-
+                
                 function ParagraphAPI:AddLineBreak()
-                    mutate(function()
-                        ParagraphText.Text = ParagraphText.Text .. "\n"
-                        updateSize(true)
-                    end)
+                    ParagraphText.Text = ParagraphText.Text .. "\n"
+                    forceUpdate()
                     return ParagraphAPI
                 end
-
+                
                 function ParagraphAPI:AddSeparator()
-                    mutate(function()
-                        ParagraphText.Text = ParagraphText.Text .. "\n────────────────\n"
-                        updateSize(true)
-                    end)
+                    ParagraphText.Text = ParagraphText.Text .. "\n────────────────\n"
+                    forceUpdate()
                     return ParagraphAPI
                 end
-
+                
                 function ParagraphAPI:AddCode(text)
-                    mutate(function()
-                        ParagraphText.Text = ParagraphText.Text ..
-                            string.format('\n<font color="#60A5FA">`%s`</font>', text)
-                        updateSize(true)
-                    end)
+                    ParagraphText.Text = ParagraphText.Text .. string.format('\n<font color="#60A5FA">`%s`</font>', text)
+                    forceUpdate()
                     return ParagraphAPI
                 end
-
+                
                 function ParagraphAPI:AddWarning(text)
-                    mutate(function()
-                        ParagraphText.Text = ParagraphText.Text ..
-                            string.format('\n<font color="#FBBF24">⚠ %s</font>', text)
-                        updateSize(true)
-                    end)
+                    ParagraphText.Text = ParagraphText.Text .. string.format('\n<font color="#FBBF24">⚠ %s</font>', text)
+                    forceUpdate()
                     return ParagraphAPI
                 end
-
+                
                 function ParagraphAPI:AddSuccess(text)
-                    mutate(function()
-                        ParagraphText.Text = ParagraphText.Text ..
-                            string.format('\n<font color="#34D399">✓ %s</font>', text)
-                        updateSize(true)
-                    end)
+                    ParagraphText.Text = ParagraphText.Text .. string.format('\n<font color="#34D399">✓ %s</font>', text)
+                    forceUpdate()
                     return ParagraphAPI
                 end
-
+                
                 function ParagraphAPI:AddError(text)
-                    mutate(function()
-                        ParagraphText.Text = ParagraphText.Text ..
-                            string.format('\n<font color="#F87171">× %s</font>', text)
-                        updateSize(true)
-                    end)
+                    ParagraphText.Text = ParagraphText.Text .. string.format('\n<font color="#F87171">× %s</font>', text)
+                    forceUpdate()
                     return ParagraphAPI
                 end
 
@@ -4702,6 +4663,7 @@ if IKAI then
     function library:GetIcon(name)
         return GetIcon(name)
     end
+
 end
 
 return library
