@@ -2844,35 +2844,69 @@ if IKAI then
                 local KC2 = Instance.new("UICorner"); KC2.CornerRadius = UDim.new(1,0); KC2.Parent = Knob2
                 local KS2 = Instance.new("UIStroke"); KS2.Color = _G.Border; KS2.Thickness = 1.5; KS2.Parent = Knob2
 
-                local mouse = LocalPlayer:GetMouse()
                 local uis = UserInputService
                 local Value = set
+                local activeInput
 
                 local function UpdateSlider(val)
                     val = math.clamp(math.floor(val), min, max)
                     Value = val
                     ValueLabel.Text = tostring(val)
-                    local pct = (val - min) / (max - min)
+                    local pct = max == min and 0 or (val - min) / (max - min)
                     Fill.Size = UDim2.new(pct, 0, 1, 0)
                     Knob2.Position = UDim2.new(pct, 0, 0.5, 0)
                     SafeCallback(callback, val)
                 end
 
-                UpdateSlider(set)
+                local function UpdateSliderFromX(x)
+                    local width = TrackBg.AbsoluteSize.X
+                    if width <= 0 then return end
+                    local pct = math.clamp((x - TrackBg.AbsolutePosition.X) / width, 0, 1)
+                    UpdateSlider(min + (max - min) * pct)
+                end
 
-                SliderBtn.MouseButton1Down:Connect(function()
-                    TweenService:Create(Knob2, TweenInfo.new(0.1), {Size = isMobileLayout and UDim2.new(0,15,0,15) or UDim2.new(0,17,0,17)}):Play()
-                    local mc, rc
-                    mc = mouse.Move:Connect(function()
-                        local pct = math.clamp((mouse.X - TrackBg.AbsolutePosition.X) / TrackBg.AbsoluteSize.X, 0, 1)
-                        UpdateSlider(min + (max - min) * pct)
-                    end)
-                    rc = uis.InputEnded:Connect(function(input)
-                        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                            mc:Disconnect(); rc:Disconnect()
-                            TweenService:Create(Knob2, TweenInfo.new(0.1), {Size = isMobileLayout and UDim2.new(0,12,0,12) or UDim2.new(0,14,0,14)}):Play()
-                        end
-                    end)
+                UpdateSlider(set)
+                local inputChangedConn
+                local inputEndedConn
+
+                SliderBtn.InputBegan:Connect(function(input)
+                    if input.UserInputType ~= Enum.UserInputType.MouseButton1
+                        and input.UserInputType ~= Enum.UserInputType.Touch then
+                        return
+                    end
+                    activeInput = input
+                    UpdateSliderFromX(input.Position.X)
+                    TweenService:Create(Knob2, TweenInfo.new(0.1), {
+                        Size = isMobileLayout and UDim2.new(0,15,0,15) or UDim2.new(0,17,0,17)
+                    }):Play()
+                end)
+
+                inputChangedConn = uis.InputChanged:Connect(function(input)
+                    if not activeInput then return end
+                    local isTouchDrag = activeInput.UserInputType == Enum.UserInputType.Touch
+                        and input == activeInput
+                    local isMouseDrag = activeInput.UserInputType == Enum.UserInputType.MouseButton1
+                        and input.UserInputType == Enum.UserInputType.MouseMovement
+                    if isTouchDrag or isMouseDrag then
+                        UpdateSliderFromX(input.Position.X)
+                    end
+                end)
+
+                inputEndedConn = uis.InputEnded:Connect(function(input)
+                    if activeInput and (input == activeInput
+                        or (activeInput.UserInputType == Enum.UserInputType.MouseButton1
+                            and input.UserInputType == Enum.UserInputType.MouseButton1)) then
+                        activeInput = nil
+                        TweenService:Create(Knob2, TweenInfo.new(0.1), {
+                            Size = isMobileLayout and UDim2.new(0,12,0,12) or UDim2.new(0,14,0,14)
+                        }):Play()
+                    end
+                end)
+                SliderFrame.AncestryChanged:Connect(function(_, parent)
+                    if parent == nil then
+                        if inputChangedConn then inputChangedConn:Disconnect() end
+                        if inputEndedConn then inputEndedConn:Disconnect() end
+                    end
                 end)
 
                 local SliderObj = {}
